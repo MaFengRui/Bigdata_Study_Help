@@ -41,4 +41,4 @@
 
 ## hive与hbase区别？
 
-​	
+​端口：hiveserver2：10000

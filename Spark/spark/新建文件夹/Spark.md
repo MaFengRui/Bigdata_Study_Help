@@ -260,7 +260,7 @@ https://www.maiyewang.com/?p=17847
 
 ### map,flatmap,flatmapToPair.mapPartition,mapPartitionWithIndex
 
-![RDD算子](Spark.assets/RDD算子.png  "RDD算子")
+![RDD算子](RDD算子.png  "RDD算子")
 		
 
 		补充：在map中有N个元素就会执行N次函数，所以初始化次数就要N次,但是当数据过大时，会对内存中已经处理的数据进行回收，不易造成OOM
@@ -304,7 +304,7 @@ reduceByKey和groupByKey的区别与用法
 
 Shuffle过程本质上都是将，Map端获得的数据使用分区器进行划分，并将数据发送给对应的reduce端，前一个stage的ShuffleMapTask进行Shuffle　Write,把数据存储在BlackManger中，并将元数据信息上报给Dirver,下一个stage根据数据的位置元信息，进行shuffle Read，拉取上个stage的输出数据。
 
-![shuffle策略](Spark.assets/shuffle.png  "shuffle策略")
+![shuffle策略](/home/mafenrgui/Desktop/技术文档/面试题/综合面试/面试题最终整理/Spark/shuffle.png  "shuffle策略")
 
  ShuffleMapTask的执行过程：先用pipeline计算得到finalRDD中对应partition的records，每得到一个record就将其送到对应的bucket里，每个bucket里面的数据会不断写到本地磁盘上，形成一个ShuffleBlockFile，或者称为**FileSegment**，之后的reducer会去fetch属于自己的FileSegment，进入shuffle read阶段
 
@@ -325,7 +325,7 @@ Sparkshuffle和MRshuffle的区别(岩心科技)
 
 ### Rdd,DataSet,DataFrame区别～～
 
-![区别](Spark.assets/三者区别.png"区别")
+![区别](三者区别.png  "区别")
 
 
 面试题
@@ -520,7 +520,42 @@ rdd操作可以设置spark.default.parallelism控制并发度，默认参数由�
 在小表不是特别大(取决于你的executor大小)的情况下使用，可以使程序避免shuffle的过程，自然也就没有数据倾斜的困扰了.（详细见http://blog.csdn.net/lsshlsw/article/details/50834858、http://blog.csdn.net/lsshlsw/article/details/48694893）
 局限性: 因为是先将小数据发送到每个executor上，所以数据量不能太大。
 
-## Spark SQL的join方式
+# Spark Streaming
+
+==所有介绍：https://www.cnblogs.com/shishanyuan/p/4747735.html==
+
+## 简单介绍：
+
+Spark的各个子框架，都是基于核心Spark的，Spark Streaming在内部的处理机制是，接收实时流的数据，并根据一定的时间间隔拆分成一批批的数据，然后通过Spark Engine处理这些批数据，最终得到处理后的一批批结果数据。
+
+对应的批数据，在Spark内核对应一个RDD实例，因此，对应流数据的DStream可以看成是一组RDDs，即RDD的一个序列。通俗点理解的话，在流数据分成一批一批后，通过一个先进先出的队列，然后 Spark Engine从该队列中依次取出一个个批数据，把批数据封装成一个RDD，然后进行处理，这是一个典型的生产者消费者模型，对应的就有生产者消费者模型的问题，即如何协调生产速率和消费速率。
+
+## 术语定义：
+
+离散流（discretized stream）或DStream：这是Spark Streaming对内部持续的实时数据流的抽象描述，即我们处理的一个实时数据流，在Spark Streaming中对应于一个DStream 实例。
+
+批数据（batch data）：这是化整为零的第一步，将实时流数据以时间片为单位进行分批，将流处理转化为时间片数据的批处理。随着持续时间的推移，这些处理结果就形成了对应的结果数据流了。
+
+时间片或批处理时间间隔（ batch interval）：这是人为地对流数据进行定量的标准，以时间片作为我们拆分流数据的依据。一个时间片的数据对应一个RDD实例。
+
+窗口长度（window length）：一个窗口覆盖的流数据的时间长度。必须是批处理时间间隔的倍数，
+
+滑动时间间隔：前一个窗口到后一个窗口所经过的时间长度。必须是批处理时间间隔的倍数
+
+Input DStream :一个input DStream是一个特殊的DStream，将Spark Streaming连接到一个外部数据源来读取数据。
+
+## 过程
+
+1.初始化==StreamingContext==对象，在该对象启动过程中实例化==DStreamGraph==和==JobScheduler==，其中==DStreamGraph==用于存放==DStream以及DStream之间的依赖关系==等信息，而JobScheduler中包括==ReceiverTracker和JobGenerator==。其中ReceiverTracker为==Driver端流数据接收器（Receiver）的管理者==，JobGenerator为==批处理作业生成器==。在ReceiverTracker启动过程中，根据==流数据接收器分发策略==通知对应的Executor中的==流数据接收管理器（ReciverSupervisor）==启动，再由==ReciverSupervisor==启动流数据接收器。
+2.当流数据接收器==Receiver启动==后，持续不断地接收实时流数据，根据传过来数据的大小进行判断，如果数据量很小，则==攒多条数据成==一块，然后再进行==块存储==，如果==数据量大==，则==直接进行块存储==。对于这些数据Receiver直接交给ReciverSupervisor，由其进行数据转储操作。==块存储==根据设置是否==预写日志==分为两种，一种是使用==非预写日志====BlockManagerBasedBlockHandler==方法直接==写==到Worker的==内存==或==磁盘==中，另一种是进行==预写日志==WriteAheadLogBasedBlockHandler方法，即在==预写日志====同时==把数据写入到==Worker的内存或磁盘==中。数据存储完毕后，ReciverSupervisor会把数据存储的元信息上报给ReceiverTracker，ReceiverTracker再把这些信息转发给ReceivedBlockTracker，由它负责管理收到数据块的元信息。
+3.在StreamingContext的JobGenerator中维护一个定时器，该定时器在批处理时间到来时会进行生成作业的操作。在该操作中进行：
+
+		i.通知ReceiverTracker将接收到的数据进行提交，在提交时采用synchronized 关键字进行处理，保证每条数据被划入一个且只被划入一个批中；
+		ii.要求DStreamGraph根据DStream依赖关系生成作业序列Seq[Job]；
+		iii.从第一步中ReceiverTracker获取本批次数据的元数据；
+		iv.把批处理时间time，作业序列Seq[Job]和本批次数据的元数据包装为JobSet，调用JobScheduler.submitJobSet(JobSet) 提交给 JobScheduler，JobScheduler将把这些作业发送给Spark核心进行处理，由于该执行为异步，因此本步将非常快；
+		v.只要提交结束（不管作业是否执行情况），Spark Streaming对整个系统做一个检查点（Checkpoint）。
+4.在Spark核心的作业对数据进行处理，处理完毕后输出到外部系统，如数据库或文件系统，输出的数据可以被外部系统所使用。由于实时流数据的数据源源不断流入，Spark会周而复始地进行数据处理，相应也会持续不断地输出结果。
 
 
 

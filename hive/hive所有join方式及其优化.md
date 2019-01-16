@@ -1,0 +1,1 @@
+![join](hive三种join方式.assets/20180117203039228.png)
