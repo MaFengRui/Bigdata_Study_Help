@@ -19,6 +19,8 @@
   
 
 
+
+
 ###  设置每个application的executor的数量（num-executors）
 
 ​    参数说明：在yarn模式下,driver向yarn申请资源的时候，他会很这个设置来启动相应数量的execuor。
@@ -88,6 +90,73 @@
 	--conf spark.shuffle.memoryFraction=0.3 \
 
 ## 开发调优
+
+### 设置序列化
+
+```
+在Spark的架构中，在网络中传递的或者缓存在内存、硬盘中的对象需要进行序列化操作，序列化的作用主要是利用时间换空间：
+1、分发给Executor上的Task
+2、需要缓存的RDD（前提是使用序列化方式缓存）
+3、广播变量
+4、Shuffle过程中的数据缓存
+5、使用receiver方式接收的流数据缓存
+6、算子函数中使用的外部变量
+```
+
+序列化的方式有两种：
+
+**Kryo的序列化库***
+
+```
+通过Java序列化（默认的序列化方式）形成一个二进制字节数组，大大减少了数据在内存、硬盘中占用的空间，减少了网络数据传输的开销，并且可以精确的推测内存使用情况，降低GC频率。
+缺点：
+ 把数据序列化为字节数组、把字节数组反序列化为对象的操作，是会消耗CPU、延长作业时间的，从而降低了Spark的性能。
+```
+
+**Kryo的序列化库**
+
+```scala
+官文介绍，Kryo序列化机制比Java序列化机制性能提高10倍左右，Spark之所以没有默认使用Kryo作为序列化类库，是因为它不支持所有对象的序列化，同时Kryo需要用户在使用前注册需要序列化的类型，不够方便。
+以下是序列化库：
+spark.kryo.classesToRegister：向Kryo注册自定义的的类型，类名间用逗号分隔
+spark.kryo.referenceTracking：跟踪对同一个对象的引用情况，这对发现有循环引用或同一对象有多个副本的情况是很有用的。设置为false可以提高性能
+spark.kryo.registrationRequired：是否需要在Kryo登记注册？如果为true，则序列化一个未注册的类时会抛出异常
+spark.kryo.registrator：为Kryo设置这个类去注册你自定义的类。最后，如果你不注册需要序列化的自定义类型，Kryo也能工作，不过每一个对象实例的序列化结果都会包含一份完整的类名，这有点浪费空间
+spark.kryo.unsafe：如果想更加提升性能，可以使用Kryo unsafe方式
+spark.kryoserializer.buffer：每个Executor中的每个core对应着一个序列化buffer。如果你的对象很大，可能需要增大该配置项。其值不能超过spark.kryoserializer.buffer.max
+spark.kryoserializer.buffer.max：允许使用序列化buffer的最大值
+spark.serializer：序列化时用的类，需要申明为org.apache.spark.serializer.KryoSerializer。这个设置不仅控制各个worker节点之间的混洗数据序列化格式，同时还控制RDD存到磁盘上的序列化格式及广播变量的序列化格式。
+```
+
+**使用步骤**
+
+1.设置序列化所使用的库
+
+````scala
+conf.set("spark.serializer","org.apache.spark.serializer.KryoSerializer");  //使用Kryo序列化库
+````
+
+2.在该库中注册用户自定义的类型
+
+````scala
+new SparkConf().registerKryoClasses(Array(classOf[LogBean]))
+````
+
+### 使用压缩文本
+
+在sparkSQL中默认的是parquet文件存储格式，
+
+当我们需要将其他文件转换为parquet文件时，需要注意，如果业务不需要就不要转换成对象进行压缩，我发现当我们转换为RDD[bean]要比DF[ROW]要低效
+
+前者 80M->30M
+
+后者 80M->15M
+
+
+
+
+
+
 
 
 ​                             

@@ -698,6 +698,7 @@ create table if not exists st_browser_members(
 `total_members` int,
 `active_members` int
 )
+
 partitioned by (month string,day string)
 row format delimited fields terminated by '\001'
 stored as orc
