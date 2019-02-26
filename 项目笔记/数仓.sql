@@ -645,7 +645,7 @@ stored as orc
 ;
 
 
-插入数据：
+-- 插入数据：
 from (
 select
 us.`pl`, 
@@ -807,7 +807,7 @@ where ol.month = '12' and ol.day = '24' and ol.u_ud is not null
 ) tmp
 insert into table dwd_session partition(month='08',day='30')
 select *
-; 
+;
 
 
 
