@@ -3,7 +3,7 @@ https://blog.csdn.net/zy_281870667/article/details/79946919
 #　      kafka
 ## 1、kafka概念
 ## 2、kafka在系统中的角色
-   ![kafka角色](kafka.assets/kafka扮演的角色.jpeg)
+   ![kafka角色](kafka常见面试题.assets/kafka.assets/kafka扮演的角色.jpeg)
 
 ## 3、kafka的应用场景 
 ### 3.1异步处理
@@ -67,8 +67,8 @@ https://blog.csdn.net/zy_281870667/article/details/79946919
     聊天室(订阅发布):客户端A，客户端B，......客户端N订阅同一主题，进行消息发布和接收。实现类似聊天室效果。
 ## kafka的架构
 
- ![架构](kafka.assets/kafka架构.jpeg)
- ![角色解释](kafka.assets/角色解释.png  "角色解释")
+ ![架构](kafka常见面试题.assets/kafka.assets/kafka架构.jpeg)
+ ![角色解释](kafka常见面试题.assets/kafka.assets/角色解释.png  "角色解释")
 
     每当一个message被发布到一个topic上的partition,broker应会将message追加到这个`逻辑`log文件的最后一个segment上，这些segments会被flush到磁盘上。flush时可以按照时间来进行也可以按照message数来执行。
     每个parttion会有一个有序的、不可变的结构化的提交日志记录的序列
@@ -84,7 +84,7 @@ https://blog.csdn.net/zy_281870667/article/details/79946919
     	00000000000000170410.log
     	00000000000000239430.index
     	00000000000000239430.log
-![index](kafka.assets/index.png  "index")   
+![index](kafka常见面试题.assets/kafka.assets/index.png  "index")   
 如上图，“.index”索引文件存储大量的元数据，“.log”数据文件存储大量的消息，索引文件中的元数据指向对应数据文件中message的物理偏移地址。其中以“.index”索引文件中的元数据[3, 348]为例，在“.log”数据文件表示第3个消息，即在全局partition中表示170410+3=170413个消息，该消息的物理偏移地址为348。
 ==那么如何从partition中通过offset查找message呢？==
 以上图为例，读取offset=170418的消息，首先查找segment文件，其中00000000000000000000.index为最开始的文件，第二个文件为00000000000000170410.index（起始偏移为170410+1=170411），而第三个文件为00000000000000239430.index（起始偏移为239430+1=239431），所以这个offset=170418就落到了第二个文件之中。其他后续文件可以依次类推，以其实偏移量命名并排列这些文件，然后根据二分查找法就可以快速定位到具体文件位置。其次根据00000000000000170410.index文件中的[8,1325]定位到00000000000000170410.log文件中的1325的位置进行读取。

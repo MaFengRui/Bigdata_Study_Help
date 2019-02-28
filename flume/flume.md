@@ -97,7 +97,7 @@ http://flume.apache.org/FlumeUserGuide.html#flume-sources
 
 可通过写Unix command的方式组织数据，最常用的就是tail -F [file]。
 
-可以实现实时传输，但在flume不运行和脚本错误时，会丢数据，也不支持断点续传功能。因为没有记录上次文件读到的位置，从而没办法知道，下次再读时，从什么地方开始读。特别是在日志文件一直在增加的时候。flume的source挂了。等flume的source再次开启的这段时间内，增加的日志内容，就没办法被source读取到了。不过flume有一个execStream的扩展，可以自己写一个监控日志增加情况，把增加的日志，通过自己写的工具把增加的内容，传送给flume的node。再传送给sink的node。要是能在tail类的source中能支持，在node挂掉这段时间的内容，等下次node开启后在继续传送，那就更完美了。
+可以实现实时传输，但在flume不运行和脚本错误时，会丢数据，也不支持断点续传功能。因为没有记录上次文件读到的位置，从而没办法知道，下次再读时，从什么地方开始读。特别是在日志文件一直在增加的时候。flume的source挂了。等flume的source再次开启的这段时间内，增加的日志内容，就没办法被source读取到了。不过flume有一个execStream的扩展，可以自己写一个监控日志增加情况，把增加的日志，通过自己写的工具把增加的内容，传送给flu                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          me的node。再传送给sink的node。要是能在tail类的source中能支持，在node挂掉这段时间的内容，等下次node开启后在继续传送，那就更完美了。
 
 - Spooling Directory Source
 
@@ -169,7 +169,11 @@ Flume的数据流由事件(Event)贯穿始终。事件是Flume的基本数据单
 
 - end-to-end：收到数据agent首先将event写到磁盘上，当数据传送成功后，再删除；如果数据发送失败，可以重新发送
 - Store on failure：这也是scribe采用的策略，当数据接收方crash时，将数据写到本地，待恢复后，继续发送
--  Besteffort：数据发送到接收方后，不会进行确认
+- Besteffort：数据发送到接收方后，不会进行确认
+
+### 在Flume中使用Event对象来作为传递数据的格式。
+
+　　Sources端在flume-ng-core子项目中的org.apache.flume.serialization包下，有一个名为LineDeserializer的类，这个类负责把数据按行来读取，每一行封装成一个Event（实现方式：按字节读取，当遇到"\n"时封装成Event返回，下一次获取Event时继续获取下一字节并判断）。然后按用户设置的批量传输的值来封装List<Event>。
 
 ## 5、实战演练
 

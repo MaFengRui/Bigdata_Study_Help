@@ -487,7 +487,7 @@ rdd.cache()和rdd.persist(Storage.MEMORY_ONLY)是等价的，在内存不足的�
 选取key，对数据进行抽样，统计出现的次数，根据出现次数大小排序取出前几个。
 比如: df.select(“key”).sample(false,0.1).(k=>(k,1)).reduceBykey(+).map(k=>(k._2,k._1)).sortByKey(false).take(10)
 如果发现多数数据分布都较为平均，而个别数据比其他数据大上若干个数量级，则说明发生了数据倾斜。
-经过分析，倾斜的数据主要有以下三种情况: 
+经过分析，倾斜的数据主要有以下三种情况: 	
 1、null（空值）或是一些无意义的信息()之类的,大多是这个原因引起。
 2、无效数据，大量重复的测试数据或是对结果影响不大的有效数据。
 3、有效数据，业务导致的正常数据分布。
@@ -499,11 +499,17 @@ rdd.cache()和rdd.persist(Storage.MEMORY_ONLY)是等价的，在内存不足的�
 (3) 使用reduceByKey 代替 groupByKey(reduceByKey用于对每个key对应的多个value进行merge操作，最重要的是它能够在本地先进行merge操作，并且merge操作可以通过函数自定义.)
 (4) 使用map join。
 案例 
-==如果使用reduceByKey因为数据倾斜造成运行失败的问题。==具体操作流程如下: 
+**如果使用reduceByKey因为数据倾斜造成运行失败的问题。**
+
+具体操作流程如下: 
+
+```
 (1) 将原始的 key 转化为 key + 随机值(例如Random.nextInt)
 (2) 对数据进行 reduceByKey(func)
 (3) 将 key + 随机值 转成 key
 (4) 再对数据进行 reduceByKey(func)
+```
+
 案例操作流程分析： 
 假设说有倾斜的Key，我们给所有的Key加上一个随机数，然后进行reduceByKey操作；此时同一个Key会有不同的随机数前缀，在进行reduceByKey操作的时候原来的一个非常大的倾斜的Key就分而治之变成若干个更小的Key，不过此时结果和原来不一样，怎么破？进行map操作，目的是把随机数前缀去掉，然后再次进行reduceByKey操作。（当然，如果你很无聊，可以再次做随机数前缀），这样我们就可以把原本倾斜的Key通过分而治之方案分散开来，最后又进行了全局聚合
 注意1: 如果此时依旧存在问题，建议筛选出倾斜的数据单独处理。最后将这份数据与正常的数据进行union即可。
@@ -520,7 +526,23 @@ rdd操作可以设置spark.default.parallelism控制并发度，默认参数由�
 在小表不是特别大(取决于你的executor大小)的情况下使用，可以使程序避免shuffle的过程，自然也就没有数据倾斜的困扰了.（详细见http://blog.csdn.net/lsshlsw/article/details/50834858、http://blog.csdn.net/lsshlsw/article/details/48694893）
 局限性: 因为是先将小数据发送到每个executor上，所以数据量不能太大。
 
-## Spark SQL的join方式
+## Spark SQL的join方式对比
+
+### boardCast join:
+
+### Shuffle Hash join
+
+### Sort Mearge Join
+
+https://www.cnblogs.com/duodushuduokanbao/p/9911256.html
+
+
+
+
+
+
+
+
 
 
 

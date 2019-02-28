@@ -645,7 +645,7 @@ stored as orc
 ;
 
 
-插入数据：
+-- 插入数据：
 from (
 select
 us.`pl`, 
@@ -698,6 +698,7 @@ create table if not exists st_browser_members(
 `total_members` int,
 `active_members` int
 )
+
 partitioned by (month string,day string)
 row format delimited fields terminated by '\001'
 stored as orc
@@ -806,7 +807,7 @@ where ol.month = '12' and ol.day = '24' and ol.u_ud is not null
 ) tmp
 insert into table dwd_session partition(month='08',day='30')
 select *
-; 
+;
 
 
 
